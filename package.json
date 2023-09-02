@@ -1,0 +1,21 @@
+{
+  "name": "logseq-ftta-notes-plugin",
+  "version": "0.0.1",
+  "author": "©ngopaul",
+  "main": "index.html",
+  "description": "📖 Hello, Logseq :)",
+  "license": "MIT",
+  "devDependencies": {
+    "@logseq/libs": "^0.0.1-alpha.29"
+  },
+  "browserslist": [
+    "chrome 80"
+  ],
+  "logseq": {
+    "id": "_azureorbit",
+    "icon": "logseq.png"
+  },
+  "dependencies": {
+    "bible-passage-reference-parser": "^2.0.1"
+  }
+}
