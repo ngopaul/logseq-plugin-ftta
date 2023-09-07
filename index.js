@@ -1,7 +1,7 @@
 /**
  * entry
  */
-let verse_regex = "(?:\\d\\s*)?[A-Z]?[a-z]+(.)?\\s*\\d+(?:[:-]\\d+)+(?:\\s*-\\s*\\d+)?(?::\\d+|(?:\\s*[A-Z]?[a-z]+\\s*\\d+:\\d+))?"
+let verse_regex = "(?:[1-3]\\s*)?[A-Za-z][A-Za-z]+(.)?(\\s*\\d+:((?:\\d+[ab]?)(?:\\s*-\\s*\\d+[ab]?)?)(,(?:\\s+\\d+)(?:\\s*-\\s*\\d+[ab]?)?)*)(;\\s*\\d+:((?:\\d+[ab]?)(?:\\s*-\\s*\\d+[ab]?)?)(,(?:\\s+\\d+)(?:\\s*-\\s*\\d+[ab]?)?)*)*"
 
 let books_in_order = [
     "Genesis",
@@ -91,7 +91,7 @@ let books = {
     "Nehemiah": ["nehemiah", "neh"],
     "Esther": ["esther", "esth"],
     "Job": ["job"],
-    "Psalms": ["psalms", "psa"],
+    "Psalms": ["psalms", "psalm", "psa"],
     "Proverbs": ["proverbs", "prov"],
     "Ecclesiastes": ["ecclesiastes", "eccl", "ecc"],
     "Song of Solomon": ["song of solomon", "sos", "song", "ss"],
@@ -147,6 +147,19 @@ function pad(num, size) {
     return num;
 }
 
+/**
+ * Remove the portion marker (i.e. a or b) from a verseString
+ * @param verseString{String}
+ */
+function removeVersePortionMarker(verseString) {
+    if (verseString[verseString.length - 1] === 'b') {
+        return verseString.slice(0, verseString.length-1);
+    } else if (verseString[verseString.length - 1] === 'a') {
+        return verseString.slice(0, verseString.length-1);
+    }
+    return verseString;
+}
+
 function getVerseBlockRef(book, chapter, verse) {
     /*
     Get the verse block reference for a book, chapter, and verse number
@@ -171,20 +184,28 @@ async function replaceContentWithVerseLinks(content) {
     let previous_str_idx = 0;
     for (const match of matches) {
         logseq.App.showMsg("Found match: " + match[0]);
-        new_content = new_content + content.slice(previous_str_idx, match.index);
-        [verse_ref_link_i, verse_texts_i] = await parseVerseReference(match[0]);
+        let original_string_fragment = content.slice(previous_str_idx, match.index);
+        new_content = new_content + (
+            original_string_fragment[0] !== " " ? " " : ""
+        ) + original_string_fragment + (
+            original_string_fragment[original_string_fragment.length - 1] !== " " ? " " : ""
+        );
+        [verse_ref_link_i, verse_texts_i] = parseVerseReference(match[0]);
         // Add the reference link to the final string
         new_content = new_content + verse_ref_link_i;
         // Add all new verses to the verse_texts
         Array.prototype.push.apply(verse_texts, verse_texts_i);
         previous_str_idx = match.index + match[0].length;
     }
-    new_content += content.slice(previous_str_idx, content.length);
+    let final_original_string_fragment = content.slice(previous_str_idx, content.length);
+    new_content += (
+        final_original_string_fragment[0] !== " " ? " " : ""
+    ) + final_original_string_fragment;
 
     return [new_content, verse_texts];
 }
 
-async function parseVerseReference(reference) {
+function parseVerseReference(reference) {
     /*
     Converts a verse reference into a block reference to the verse.
     Also generates a list of block references to the actual text of the verses
@@ -201,13 +222,16 @@ async function parseVerseReference(reference) {
     Throws:
         None
      */
-    // remove silly logseq formatting information that is still included in the block text.
-    if (reference.includes("logseq.")) {
-        reference = reference.slice(0, reference.indexOf("logseq."))
-    }
     reference = reference.toLowerCase();
-    // logseq.App.showMsg(reference);
 
+    // make a list of [book_num, chapter_num, verse_num]
+    let reference_chunks = []
+
+    // chapter_chunks chunks contains things like "3:1, 3-4, 11, 15-17" and "Rom. 1:3-4". The first verse chunk
+    // must always contain the book reference
+    let chapter_chunks = reference.split(";")
+
+    // get the book name
     // Iterate through all the books to search for all the possible abbreviations of the book
     // names, to get the book name
     let book = ""
@@ -216,7 +240,7 @@ async function parseVerseReference(reference) {
     for (const [key, shortenings] of Object.entries(books)) {
         for (const shortening of shortenings) {
             length_of_start = shortening.length;
-            if (reference.slice(0, length_of_start) === shortening) {
+            if (chapter_chunks[0].slice(0, length_of_start) === shortening) {
                 book = key;
                 leave_loop = true;
                 break;
@@ -226,8 +250,6 @@ async function parseVerseReference(reference) {
             break;
         }
     }
-    // logseq.App.showMsg(book);
-
     // Get book number
     let book_number = 0
     for (let i = 0; i < books_in_order.length; i++) {
@@ -236,59 +258,93 @@ async function parseVerseReference(reference) {
             break;
         }
     }
-
     if (book_number === 0) {
         logseq.App.showMsg("Could not parse book from reference '" + reference + "'", "error");
         throw EvalError
     }
+    console.log("Book name: " + book);
 
-    // slice the reference to only parse the chapter and verse numbers
-    reference = reference.slice(length_of_start, reference.length)
+    // chapter_chunks looks like this:
+    // ["1 Cor. 1:30", "5:7b-8a", "10:3-4", "15:20, 45"]
 
-    // logseq.App.showMsg(reference);
-    // remove any period that was used to delineate the end of the verse
-    if (reference[0] === '.') {
-        reference = reference.slice(1, reference.length);
+    // remove the book name for the first verse_chunk
+    chapter_chunks[0] = chapter_chunks[0].slice(length_of_start, chapter_chunks[0].length);
+    if (chapter_chunks[0][0] === '.') {
+        chapter_chunks[0] = chapter_chunks[0].slice(1, chapter_chunks[0].length);
     }
+    console.log("Chapter chunks: " + chapter_chunks.toString())
 
-    // logseq.App.showMsg(reference);
-    let [chapter, verses] = reference.split(":")
+    // now chapter_chunks looks like this:
+    // [" 1:30", "5:7b-8a", "10:3-4", "15:20, 45"]
 
-    // get the chapter and start/end verses
-    chapter = parseInt(chapter);
-    let verses_array = []
-    if (verses.includes("-")) {
-        let [start_verse, end_verse] = verses.split("-")
-        start_verse = parseInt(start_verse)
-        end_verse = parseInt(end_verse)
-        for (let i = start_verse; i < end_verse + 1; i++) {
-            verses_array.push(i);
+    // fill verse_chunks with verse fragments
+    let verse_chunks = []
+    for (const chapterChunk of chapter_chunks) {
+        const splitUpChapterChunk = chapterChunk.split(",");
+        console.log("Split up Chapter Chunk: " + splitUpChapterChunk);
+        Array.prototype.push.apply(verse_chunks, splitUpChapterChunk);
+    }
+    console.log("Verse Chunks: " + verse_chunks.toString())
+
+    // now verse_chunks looks like this:
+    // [" 1:30", "5:7b-8a", "10:3-4", "15:20", " 45"]
+
+    // add everything to reference chunks
+    let current_chapter = 0
+    let current_verse = 0
+    for (const verseChunk of verse_chunks) {
+        if (verseChunk.includes(":")) {
+            // includes a chapter reference, extract that first
+            let [chapterString, verseString] = verseChunk.split(":");
+            current_chapter = parseInt(chapterString);
+            if (verseString.includes("-")) {
+                // handle multiple verses
+                let [startVerseString, endVerseString] = verseString.split("-");
+                startVerseString = removeVersePortionMarker(startVerseString);
+                endVerseString = removeVersePortionMarker(endVerseString);
+                let startVerseIndex = parseInt(startVerseString);
+                let endVerseIndex = parseInt(endVerseString);
+                for (let i = startVerseIndex; i <= endVerseIndex; i++) {
+                    reference_chunks.push([book_number, current_chapter, i]);
+                }
+            } else {
+                verseString = removeVersePortionMarker(verseString);
+                current_verse = parseInt(verseString);
+                reference_chunks.push([book_number, current_chapter, current_verse]);
+            }
+        } else {
+            // doesn't include a chapter reference, use the current chapter
+            let verseString = verseChunk;
+            if (verseString.includes("-")) {
+                // handle multiple verses
+                let [startVerseString, endVerseString] = verseString.split("-");
+                startVerseString = removeVersePortionMarker(startVerseString);
+                endVerseString = removeVersePortionMarker(endVerseString);
+                let startVerseIndex = parseInt(startVerseString);
+                let endVerseIndex = parseInt(endVerseString);
+                for (let i = startVerseIndex; i <= endVerseIndex; i++) {
+                    reference_chunks.push([book_number, current_chapter, i]);
+                }
+            } else {
+                verseString = removeVersePortionMarker(verseString);
+                current_verse = parseInt(verseString);
+                reference_chunks.push([book_number, current_chapter, current_verse]);
+            }
         }
-    } else {
-        verses_array.push(parseInt(verses))
     }
-    // logseq.App.showMsg(verses_array.toString());
+    console.log("Reference Chunks: " + reference_chunks.toString())
 
-    // if there is only one verse, return just one child. Otherwise, you need to return many
-    if (verses_array.length === 1) {
-        let verse_blockref = getVerseBlockRef(book_number, chapter, verses_array[0])
-        let verse_text_blockref = getVerseTextBlockRef(verse_blockref);
-
-        let verse_text_blockrefs = [verse_text_blockref];
-        return [verse_blockref, verse_text_blockrefs];
-    } else {
-        let verses_blockref = getVerseBlockRef(book_number, chapter, verses_array[0]) + " - " +
-            getVerseBlockRef(book_number, chapter, verses_array[verses_array.length - 1])
-        let verse_text_blockrefs = [];
-        for (const versesArrayElement of verses_array) {
-            let verse_blockref = getVerseBlockRef(book_number, chapter, versesArrayElement)
-            let verse_text_blockref = getVerseTextBlockRef(verse_blockref);
-            verse_text_blockrefs.push(verse_text_blockref);
-        }
-        // logseq.App.showMsg("child_verses: " + child_verses);
-        return [verses_blockref, verse_text_blockrefs];
+    let verse_block_refs = []
+    let verse_text_block_refs = []
+    for (const referenceChunk of reference_chunks) {
+        const verse_block_ref = getVerseBlockRef(referenceChunk[0], referenceChunk[1], referenceChunk[2]);
+        verse_block_refs.push(verse_block_ref);
+        verse_text_block_refs.push(getVerseTextBlockRef(verse_block_ref));
     }
+    console.log("verse refs: " + verse_block_refs.toString());
+    console.log("verse text refs: " + verse_text_block_refs.toString());
 
+    return [verse_block_refs.join(", "), verse_text_block_refs]
 }
 
 async function addChildBlock(parent_block_uuid, value) {
@@ -380,3 +436,4 @@ function main() {
 
 // bootstrap
 logseq.ready(main).catch(console.error)
+// parseVerseReference("1 Cor. 1:30; 5:7b-8a; 10:3-4; 15:20");
