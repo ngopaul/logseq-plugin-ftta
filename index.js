@@ -87,7 +87,7 @@ let books = {
     "2 Kings": ["2 kings", "2kings", "2k", "2 k"],
     "1 Chronicles": ["1 chronicles", "1 chron", "1chron"],
     "2 Chronicles": ["2 chronicles", "2 chron", "2chron"],
-    "Ezra": ["ezra", "ez"],
+    "Ezra": ["ezra"],
     "Nehemiah": ["nehemiah", "neh"],
     "Esther": ["esther", "esth"],
     "Job": ["job"],
@@ -183,7 +183,7 @@ async function replaceContentWithVerseLinks(content) {
     let verse_texts = [];
     let previous_str_idx = 0;
     for (const match of matches) {
-        logseq.App.showMsg("Found match: " + match[0]);
+        // logseq.App.showMsg("Found match: " + match[0]);
         let original_string_fragment = content.slice(previous_str_idx, match.index);
         new_content = new_content + (
             original_string_fragment[0] !== " " ? " " : ""
@@ -435,5 +435,5 @@ function main() {
 }
 
 // bootstrap
-logseq.ready(main).catch(console.error)
-// parseVerseReference("1 Cor. 1:30; 5:7b-8a; 10:3-4; 15:20");
+logseq.ready(main).catch(console.error);
+// parseVerseReference("ezek. 36:5");
