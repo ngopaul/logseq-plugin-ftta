@@ -349,10 +349,12 @@ function parseVerseReference(reference) {
 
 async function addChildBlock(parent_block_uuid, value) {
     /*
-    Adds a child block to the end of a parents set of children, with the given string value.
+    Adds a child block to the start of a parents set of children, with the given string value.
      */
     if (parent_block_uuid) {
         await logseq.Editor.getBlock(parent_block_uuid, {includeChildren: true}).then(parent_block => {
+            // Insert the block right below the parent block
+
             // if the parent block has no child blocks
             if (parent_block.children.length === 0) {
                 logseq.Editor.insertBlock(parent_block_uuid, value, {
@@ -362,10 +364,10 @@ async function addChildBlock(parent_block_uuid, value) {
 
             // if the parent block has 1+ children blocks
             else if (parent_block.children.length > 0) {
-                // get the last child block form the current block and insert a sibling block underneath it
-                last_block_uuid = parent_block.children[parent_block.children.length - 1].uuid;
-                logseq.Editor.insertBlock(last_block_uuid, value, {
-                    sibling: true
+                const first_child_uuid = parent_block.children[0].uuid;
+                logseq.Editor.insertBlock(first_child_uuid, value, {
+                    sibling: true,
+                    before: true,
                 });
             }
         });
@@ -427,9 +429,13 @@ function main() {
             let [verse_link, child_verses] = await replaceContentWithVerseLinks(content);
             await logseq.Editor.updateBlock(uuid, verse_link);
 
-            for (const childVerse of child_verses) {
-                await addChildBlock(uuid, childVerse);
+            // insert in reverse because we are inserting from the top
+            for (let i = 0; i < child_verses.length; i++) {
+                await addChildBlock(uuid, child_verses[child_verses.length - i - 1]);
             }
+            // for (const childVerse of child_verses) {
+            //     await addChildBlock(uuid, childVerse);
+            // }
         },
     )
 }
