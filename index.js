@@ -172,6 +172,10 @@ function getVerseTextBlockRef(verseBlockRef) {
     return verseBlockRef.replace("b1b1b1b1b1b1", "b1b1b1b1b1b2")
 }
 
+function getVerseBlockRefFromRef(verseTextBlockRef) {
+    return verseTextBlockRef.replace("b1b1b1b1b1b2", "b1b1b1b1b1b1")
+}
+
 async function replaceContentWithVerseLinks(content) {
     /*
     Replace a string content, that contains verse references, to the same
@@ -352,28 +356,44 @@ async function addChildBlock(parent_block_uuid, value) {
     Adds a child block to the start of a parents set of children, with the given string value.
      */
     if (parent_block_uuid) {
-        await logseq.Editor.getBlock(parent_block_uuid, {includeChildren: true}).then(parent_block => {
-            // Insert the block right below the parent block
-
-            // if the parent block has no child blocks
-            if (parent_block.children.length === 0) {
-                logseq.Editor.insertBlock(parent_block_uuid, value, {
-                    sibling: false
-                });
-            }
-
-            // if the parent block has 1+ children blocks
-            else if (parent_block.children.length > 0) {
-                const first_child_uuid = parent_block.children[0].uuid;
-                logseq.Editor.insertBlock(first_child_uuid, value, {
-                    sibling: true,
-                    before: true,
-                });
-            }
-        });
+        // await logseq.Editor.getBlock(parent_block_uuid, {includeChildren: true}).then(parent_block => {
+        //     // Insert the block right below the parent block
+        //
+        //     // if the parent block has no child blocks
+        //     if (parent_block.children.length === 0) {
+        //         logseq.Editor.insertBlock(parent_block_uuid, value, {
+        //             sibling: false
+        //         });
+        //     }
+        //
+        //     // if the parent block has 1+ children blocks
+        //     else if (parent_block.children.length > 0) {
+        //         const first_child_uuid = parent_block.children[0].uuid;
+        //         logseq.Editor.insertBlock(first_child_uuid, value, {
+        //             sibling: true,
+        //             before: true,
+        //         });
+        //     }
+        // });
+        let parentBlock = await logseq.Editor.getBlock(parent_block_uuid, {includeChildren: true});
+        // Insert the block right below the parent block
+        if (parentBlock.children.length === 0) {
+            return await logseq.Editor.insertBlock(parent_block_uuid, value, {
+                sibling: false
+            });
+        }
+        // if the parent block has 1+ children blocks
+        else if (parentBlock.children.length > 0) {
+            const first_child_uuid = parentBlock.children[0].uuid;
+            return await logseq.Editor.insertBlock(first_child_uuid, value, {
+                sibling: true,
+                before: true,
+            });
+        }
     }
     else {
         logseq.UI.showMsg("No block selected", "warning");
+        return null;
     }
 }
 
@@ -399,7 +419,8 @@ async function getChildBlockContent(parent_block_uuid, child_index) {
 }
 
 function main() {
-    logseq.App.showMsg('Successfully loaded FTTA notes plugin.');
+    logseq.App.showMsg('Successfully loaded FTTA notes plugin. ' +
+        'Commands: /verse, /fullverse, /dvembed, /cvembed');
 
     logseq.Editor.registerSlashCommand(
         'verse',
@@ -436,6 +457,41 @@ function main() {
             // for (const childVerse of child_verses) {
             //     await addChildBlock(uuid, childVerse);
             // }
+        },
+    )
+
+    logseq.Editor.registerSlashCommand(
+        'dvembed', // direct verse embed
+        async () => {
+            // Embed te verses as children below the current block
+            let {content, uuid} = await logseq.Editor.getCurrentBlock()
+
+            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content);
+            let additional_content = "";
+            // insert in reverse because we are inserting from the top
+            for (let i = child_verses.length - 1; i >= 0; i--) {
+                additional_content += "{{embed " + getVerseBlockRefFromRef(child_verses[child_verses.length - i - 1]) + "}}";
+            }
+            await logseq.Editor.updateBlock(uuid, verse_link + additional_content);
+        },
+    )
+
+    logseq.Editor.registerSlashCommand(
+        'cvembed', // collapsed verse embed
+        async () => {
+            // Embed te verses as children below the current block
+            let {content, uuid} = await logseq.Editor.getCurrentBlock()
+
+            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content);
+            let additional_content = "[click to edit] ";
+            // insert in reverse because we are inserting from the top
+            for (let i = child_verses.length - 1; i >= 0; i--) {
+                additional_content += "{{embed " + getVerseBlockRefFromRef(child_verses[child_verses.length - i - 1]) + "}}";
+            }
+            await logseq.Editor.updateBlock(uuid, verse_link);
+            let subBlock = await addChildBlock(uuid, "Verses: \ncollapsed:: true");
+            uuid = subBlock.uuid;
+            await addChildBlock(uuid, additional_content);
         },
     )
 }
