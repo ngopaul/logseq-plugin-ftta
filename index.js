@@ -176,7 +176,7 @@ function getVerseBlockRefFromRef(verseTextBlockRef) {
     return verseTextBlockRef.replace("b1b1b1b1b1b2", "b1b1b1b1b1b1")
 }
 
-async function replaceContentWithVerseLinks(content) {
+async function replaceContentWithVerseLinks(content, keep_short=false) {
     /*
     Replace a string content, that contains verse references, to the same
      content, but with links to the references instead.
@@ -194,7 +194,7 @@ async function replaceContentWithVerseLinks(content) {
         ) + original_string_fragment + (
             original_string_fragment[original_string_fragment.length - 1] !== " " ? " " : ""
         );
-        [verse_ref_link_i, verse_texts_i] = parseVerseReference(match[0]);
+        [verse_ref_link_i, verse_texts_i] = parseVerseReference(match[0], keep_short);
         // Add the reference link to the final string
         new_content = new_content + verse_ref_link_i;
         // Add all new verses to the verse_texts
@@ -209,7 +209,7 @@ async function replaceContentWithVerseLinks(content) {
     return [new_content, verse_texts];
 }
 
-function parseVerseReference(reference) {
+function parseVerseReference(reference, keep_short=false) {
     /*
     Converts a verse reference into a block reference to the verse.
     Also generates a list of block references to the actual text of the verses
@@ -227,6 +227,7 @@ function parseVerseReference(reference) {
         None
      */
     reference = reference.toLowerCase();
+    reference = reference.replace(/\xA0/g, ' ');  // clean up non-breaking spaces
 
     // make a list of [book_num, chapter_num, verse_num]
     let reference_chunks = []
@@ -293,7 +294,10 @@ function parseVerseReference(reference) {
     // now verse_chunks looks like this:
     // [" 1:30", "5:7b-8a", "10:3-4", "15:20", " 45"]
 
-    // add everything to reference chunks
+    // add everything to reference chunks or verse_block_refs
+
+    let verse_block_refs = []
+
     let current_chapter = 0
     let current_verse = 0
     for (const verseChunk of verse_chunks) {
@@ -310,11 +314,19 @@ function parseVerseReference(reference) {
                 let endVerseIndex = parseInt(endVerseString);
                 for (let i = startVerseIndex; i <= endVerseIndex; i++) {
                     reference_chunks.push([book_number, current_chapter, i]);
+                    if (!keep_short) {
+                        verse_block_refs.push(getVerseBlockRef(book_number, current_chapter, i))
+                    }
+                }
+                if (keep_short) {
+                    verse_block_refs.push(getVerseBlockRef(book_number, current_chapter, startVerseIndex) +
+                    " - " + getVerseBlockRef(book_number, current_chapter, endVerseIndex));
                 }
             } else {
                 verseString = removeVersePortionMarker(verseString);
                 current_verse = parseInt(verseString);
                 reference_chunks.push([book_number, current_chapter, current_verse]);
+                verse_block_refs.push(getVerseBlockRef(book_number, current_chapter, current_verse));
             }
         } else {
             // doesn't include a chapter reference, use the current chapter
@@ -328,21 +340,28 @@ function parseVerseReference(reference) {
                 let endVerseIndex = parseInt(endVerseString);
                 for (let i = startVerseIndex; i <= endVerseIndex; i++) {
                     reference_chunks.push([book_number, current_chapter, i]);
+                    if (!keep_short) {
+                        verse_block_refs.push(getVerseBlockRef(book_number, current_chapter, i))
+                    }
+                }
+                if (keep_short) {
+                    verse_block_refs.push(getVerseBlockRef(book_number, current_chapter, startVerseIndex) +
+                        " - " + getVerseBlockRef(book_number, current_chapter, endVerseIndex));
                 }
             } else {
                 verseString = removeVersePortionMarker(verseString);
                 current_verse = parseInt(verseString);
                 reference_chunks.push([book_number, current_chapter, current_verse]);
+                verse_block_refs.push(getVerseBlockRef(book_number, current_chapter, current_verse));
             }
         }
     }
     console.log("Reference Chunks: " + reference_chunks.toString())
 
-    let verse_block_refs = []
     let verse_text_block_refs = []
     for (const referenceChunk of reference_chunks) {
         const verse_block_ref = getVerseBlockRef(referenceChunk[0], referenceChunk[1], referenceChunk[2]);
-        verse_block_refs.push(verse_block_ref);
+        // verse_block_refs.push(verse_block_ref);
         verse_text_block_refs.push(getVerseTextBlockRef(verse_block_ref));
     }
     console.log("verse refs: " + verse_block_refs.toString());
@@ -447,7 +466,7 @@ function main() {
             //     [:h1 "#${uuid}"]
             //     [:h2.text-xl "${content}"]]
             // `)
-            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content);
+            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content, true);
             await logseq.Editor.updateBlock(uuid, verse_link);
 
             // insert in reverse because we are inserting from the top
@@ -466,8 +485,8 @@ function main() {
             // Embed te verses as children below the current block
             let {content, uuid} = await logseq.Editor.getCurrentBlock()
 
-            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content);
-            let additional_content = "";
+            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content, true);
+            let additional_content = verse_link[-1] === " " ? "" : " ";
             // insert in reverse because we are inserting from the top
             for (let i = child_verses.length - 1; i >= 0; i--) {
                 additional_content += "{{embed " + getVerseBlockRefFromRef(child_verses[child_verses.length - i - 1]) + "}}";
@@ -482,7 +501,8 @@ function main() {
             // Embed te verses as children below the current block
             let {content, uuid} = await logseq.Editor.getCurrentBlock()
 
-            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content);
+            let [verse_link, child_verses] = await replaceContentWithVerseLinks(content, true
+            );
             let additional_content = "[click to edit] ";
             // insert in reverse because we are inserting from the top
             for (let i = child_verses.length - 1; i >= 0; i--) {
@@ -498,4 +518,4 @@ function main() {
 
 // bootstrap
 logseq.ready(main).catch(console.error);
-// parseVerseReference("ezek. 36:5");
+// parseVerseReference("1 Cor. 3:2 a");
