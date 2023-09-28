@@ -94,7 +94,7 @@ let books = {
     "Psalms": ["psalms", "psalm", "psa"],
     "Proverbs": ["proverbs", "prov"],
     "Ecclesiastes": ["ecclesiastes", "eccl", "ecc"],
-    "Song of Solomon": ["song of solomon", "song of songs", "sos", "song", "ss", "s.s."],
+    "Song of Solomon": ["song of solomon", "song of songs", "sos", "song", "ss", "s.s."], // TODO fix song of songs
     "Isaiah": ["isaiah", "isa"],
     "Jeremiah": ["jeremiah", "jer"],
     "Lamentations": ["lamentations", "lam"],
