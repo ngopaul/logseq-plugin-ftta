@@ -1,7 +1,7 @@
 /**
  * entry
  */
-let verse_regex = "(?:[1-3]\\s*)?[A-Za-z][A-Za-z]+(.)?(\\s*\\d+:((?:\\d+[ab]?)(?:\\s*-\\s*\\d+[ab]?)?)(,(?:\\s+\\d+)(?:\\s*-\\s*\\d+[ab]?)?)*)(;\\s*\\d+:((?:\\d+[ab]?)(?:\\s*-\\s*\\d+[ab]?)?)(,(?:\\s+\\d+)(?:\\s*-\\s*\\d+[ab]?)?)*)*"
+let verse_regex = "([Ss]ong of )?(?:[1-3] *)?[A-Za-z](\\.)?[A-Za-z]+(.)?(\\s*\\d+:((?:\\d+[ab]?)(?:\\s*-\\s*\\d+[ab]?)?)(,(?:\\s+\\d+)(?:\\s*-\\s*\\d+[ab]?)?)*)(;\\s*\\d+:((?:\\d+[ab]?)(?:\\s*-\\s*\\d+[ab]?)?)(,(?:\\s+\\d+)(?:\\s*-\\s*\\d+[ab]?)?)*)*"
 
 let books_in_order = [
     "Genesis",
@@ -226,7 +226,7 @@ function parseVerseReference(reference, keep_short=false) {
     Throws:
         None
      */
-    reference = reference.toLowerCase();
+    reference = reference.toLowerCase().trim();
     reference = reference.replace(/\xA0/g, ' ');  // clean up non-breaking spaces
 
     // make a list of [book_num, chapter_num, verse_num]
