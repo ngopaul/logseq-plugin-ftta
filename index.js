@@ -122,7 +122,7 @@ let books = {
     "2 Corinthians": ["2 corinthians", "2corinthians", "2 cor", "2cor"],
     "Galatians": ["galatians", "gala", "gal"],
     "Ephesians": ["ephesians", "ephe", "eph"],
-    "Philippians": ["philippians", "phil."],  // without . could intersect with philemon
+    "Philippians": ["philippians", "phil.", "phil "],  // without . could intersect with philemon
     "Colossians": ["colossians", "col"],
     "1 Thessalonians": ["1 thessalonians", "1thessalonians", "1 thes", "1thes"],
     "2 Thessalonians": ["2 thessalonians", "2thessalonians", "2 thes", "2thes"],
