@@ -122,14 +122,14 @@ let books = {
     "2 Corinthians": ["2 corinthians", "2corinthians", "2 cor", "2cor"],
     "Galatians": ["galatians", "gala", "gal"],
     "Ephesians": ["ephesians", "ephe", "eph"],
-    "Philippians": ["philippians", "phil"],
+    "Philippians": ["philippians", "phil."],  // without . could intersect with philemon
     "Colossians": ["colossians", "col"],
     "1 Thessalonians": ["1 thessalonians", "1thessalonians", "1 thes", "1thes"],
     "2 Thessalonians": ["2 thessalonians", "2thessalonians", "2 thes", "2thes"],
     "1 Timothy": ["1 timothy", "1timothy", "1 tim", "1tim"],
     "2 Timothy": ["2 timothy", "2timothy", "2 tim", "2tim"],
     "Titus": ["titus", "tit"],
-    "Philemon": ["philemon", "phil"],
+    "Philemon": ["philemon", "philem"],
     "Hebrews": ["hebrews", "heb"],
     "James": ["james"],
     "1 Peter": ["1 peter", "1peter", "1 pet", "1pet"],
@@ -518,4 +518,4 @@ function main() {
 
 // bootstrap
 logseq.ready(main).catch(console.error);
-// parseVerseReference("1 Cor. 3:2 a");
+// parseVerseReference("Philem. 1:25");
