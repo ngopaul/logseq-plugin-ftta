@@ -22,3 +22,8 @@ if you have the support files for logseq ftta notetaking.
 - ```/hymn```
   - Only replaces hymns of the form h#### or ns####
   - hymn database TODO
+
+### Limitations
+
+- Doesn't currently handle single chapter books (i.e. Jude 20). Instead,
+use Jude 1:20 for the reference.
